@@ -2,7 +2,7 @@
 // Make the following connections between the EZ1 and the Arduino
 // +5V - +5V
 // GND - GND
-// AN - Analog In 0
+// AN - Analog In 7
 
 // INSTRUCTIONS:
 // Upload this sketch to your Arduino, then activate the Serial Monitor
@@ -19,7 +19,7 @@ void loop()
   int sensor, inches, x;
   
   // read the analog output of the EZ1 from analog input 0
-  sensor = analogRead(0);
+  sensor = analogRead(7);
   
   // convert the sensor reading to inches
   inches = sensor / 2;
