@@ -4,16 +4,19 @@ void setup() {
 }
 
 void loop() {
-   int sensor, inches, x;
+   int sensor,inches,cm, x;
   
   // read the analog output of the EZ1 from analog input 0
   sensor = analogRead(3);
   
   // convert the sensor reading to inches
   inches = sensor / 2;
+
+  //convert inches to centimeters
+  cm = inches*2.54;
   
   // print out the decimal result
-  Serial.print(inches,DEC);
+  Serial.print(cm,DEC);
   
   // print out a graphic representation of the result
   Serial.print(" ");
