@@ -6,8 +6,8 @@
         GND: GND
  */
  
-int trigPin = 11;    //Trig - green Jumper
-int echoPin = 12;    //Echo - yellow Jumper
+int trigPin = 12;    //Trig - green Jumper
+int echoPin = 11;    //Echo - yellow Jumper
 long duration, cm, inches;
  
 void setup() {
