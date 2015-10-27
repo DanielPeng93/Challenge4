@@ -218,3 +218,13 @@ void getDist(double (&distArray)[4]) {
     delay(10);
   }
 }
+
+void calcDistAngle(double dist0, double dist1) {
+  double angle = atan((dist0 - dist1) / LIDARspacing);
+  double centerDist = ((dist0 + dist1) * cos(angle)) / 2;
+  double distAngle [2];
+  distAngle[0] = angle;
+  distAngle[1] = centerDist;
+  return distAngle;
+}
+
