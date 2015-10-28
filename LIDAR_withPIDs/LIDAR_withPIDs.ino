@@ -98,7 +98,7 @@ void loop() {
   PID_theta.Compute();
   PID_dist.Compute();
   
-  motorServo.write(90  );
+  motorServo.write(90  -20 );
   steeringServo.write(90 - Output_theta); // - Output_theta - Output_dist
   delay(15);
 }
@@ -218,3 +218,117 @@ void getDist(double (&distArray)[4]) {
     delay(10);
   }
 }
+
+void calcDistAngle(double dist0, double dist1) {
+  double angle = atan((dist0 - dist1) / LIDARspacing);
+  double centerDist = ((dist0 + dist1) * cos(angle)) / 2;
+  double distAngle [2];
+  distAngle[0] = angle;
+  distAngle[1] = centerDist;
+  return distAngle;
+}
+
+
+// //#include <Servo.h>
+// #include <Wire.h>
+
+// #define LIDARLITE_ADDR 0x62
+// #define LIDARLITE_CMD_CTRL_ADDR 0x00
+// #define LIDARLITE_TRIG_VAL 0x04
+// #define LIDARLITE_RANGE_ADDR 0x8f
+
+// //Servo wheel_speed_servo, wheel_direction_servo;
+// const int lidar_pwr_en[] = {
+//   12, 13
+// };    // PWR_EN pins to put lidars to sleep
+// int enabled_lidar = 0;
+// int lidar_state = 0;    // {0:Disabled, 1:Enabled, 2:Triggered, 3:Requested data}
+// int state_cycle_count = 0;
+// double dist[2];
+
+// void read_lidars() {
+//   switch (lidar_state) {
+//     case 0:
+//       for (int i = 0; i < 2; i++) digitalWrite(lidar_pwr_en[i], LOW);
+//       digitalWrite(lidar_pwr_en[enabled_lidar], HIGH);
+//       lidar_state = 1;
+//       state_cycle_count = 0;
+//       break;
+//     case 1:
+//       Wire.beginTransmission(LIDARLITE_ADDR);
+//       Wire.write(LIDARLITE_CMD_CTRL_ADDR);
+//       Wire.write(LIDARLITE_TRIG_VAL);
+//       if (Wire.endTransmission() == 0) lidar_state = 2;
+//       else state_cycle_count++;
+//       break;
+//     case 2:
+//       Wire.beginTransmission(LIDARLITE_ADDR);
+//       Wire.write(LIDARLITE_RANGE_ADDR);
+//       if (Wire.endTransmission() == 0) lidar_state = 3;
+//       else state_cycle_count++;
+//       break;
+//     case 3:
+//       if (Wire.requestFrom(LIDARLITE_ADDR, 2) >= 2) {
+//         uint16_t val = Wire.read() << 8 | Wire.read();
+//         if (val < 500 && val > 10) dist[enabled_lidar] = val;
+//         enabled_lidar = 1 - enabled_lidar;
+//         lidar_state = 0;
+//       } else state_cycle_count++;
+//       break;
+//   }
+//   if (state_cycle_count > 30) {
+//     lidar_state = 0;
+//     enabled_lidar = 1 - enabled_lidar;
+//     state_cycle_count = 0;
+//   }
+// }
+
+// unsigned long serial_timestamp, now;
+
+
+// void setup() {
+//   Wire.begin();
+//   Serial.begin(57600);
+//   Serial.println("Started");
+//   for (int i = 0; i < 2; i++)
+//     pinMode(lidar_pwr_en[i], OUTPUT);
+
+//   for (int i = 0; i < 2; i++) {
+//     for (int j = 0; j < 2; j++)  digitalWrite(lidar_pwr_en[j], LOW);
+//     digitalWrite(lidar_pwr_en[i], HIGH);
+//     while (1) {
+//       Wire.beginTransmission(LIDARLITE_ADDR);
+//       Wire.write(0x01);
+//       Wire.write(0xA0);
+//       if (Wire.endTransmission() == 0) break;
+//     }
+//   }
+//   //  wheel_speed_servo.attach(8);
+//   //  wheel_direction_servo.attach(9);
+//   //  calibrate_servo(wheel_direction_servo, 0, 180);
+// }
+
+// void loop() {
+//   read_lidars();
+//   now = millis();
+//   if(now - serial_timestamp > 20){
+//     serial_timestamp = now;
+//     Serial.print(dist[0]);
+//     Serial.print('\t');
+//     Serial.println(dist[1]);
+//   }
+//   delay(1);
+// }
+// //void calibrate_servo(Servo & servo, int minVal, int maxVal) {
+// //  const int calibration_delay = 1000;
+// //  const int calibration_angles[] = {
+// //    maxVal, minVal, (minVal + maxVal) / 2, (minVal + maxVal) / 2
+// //  };
+// //  for (int i = 0; i < sizeof(calibration_angles) / sizeof(*calibration_angles); i++) {
+// //    servo.write(calibration_angles[i]);
+// //    delay(calibration_delay);
+// //  }
+// //}
+
+
+
