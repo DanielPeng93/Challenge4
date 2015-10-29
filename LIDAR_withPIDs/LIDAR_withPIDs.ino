@@ -30,12 +30,14 @@ Servo steeringServo, motorServo;
 const int steeringPin = 9, motorPin = 8;
 
 //define PID variables
-double Setpoint_theta = 0, Input_theta, Output_theta, Setpoint_dist = 90, Input_dist, Output_dist;
+double Setpoint_theta = 0, Input_theta, Output_theta, Setpoint_dist = 90, Input_dist, Output_dist, Setpoint_speed = 60, Input_speed, Output_speed;
 //specify initial PID links and tuning
 int KpT = 1.7, KiT = 0, KdT = 0.01;  // {1.7, 0, 0.01}
 int KpD = 1.1, KiD = 0.075, KdD = 0.97;   // {1, 0, 0}
+int KpS = 0.5, KiS = 0, KdS = 0;
 PID PID_theta(&Input_theta, &Output_theta, &Setpoint_theta, KpT, KiT, KdT, DIRECT);
 PID PID_dist(&Input_dist, &Output_dist, &Setpoint_dist, KpD, KiD, KdD, DIRECT);
+PID PID_speed(&Input_speed, &Output_speed, &Setpoint_speed, KpS, KiS, KdS, DIRECT);
 
 //Spacing between LIDARs on vehicle
 double LIDARspacing = 22.5;
@@ -57,10 +59,12 @@ bool state_paused = true;
 void setup() {
   PID_theta.SetMode(AUTOMATIC);
   PID_dist.SetMode(AUTOMATIC);
+  PID_speed.SetMode(AUTOMATIC);
 
   // Servo range limits
-  PID_theta.SetOutputLimits(-50, 50);
-  PID_dist.SetOutputLimits(-50, 50);
+  PID_theta.SetOutputLimits(-45, 45);
+  PID_dist.SetOutputLimits(-45, 45);
+  PID_speed.SetOutputLimits(-20, 20);
 
   steeringServo.attach(steeringPin);
   motorServo.attach(motorPin);
@@ -94,15 +98,16 @@ void setup() {
 }
 
 void loop() {
-  if(xbeeStream.available() && xbeeStream.read() == 0x00){
+  if (xbeeStream.available() && xbeeStream.read() == 0x00) {
     state_paused = !state_paused;
-    if(state_paused)  motorServo.write(90);
+    if (state_paused)  motorServo.write(90);
   }
   if (!state_paused) {
     now = millis();
     read_lidars();
     if (now - timestamp > 40) {
       wheel_rpm = ENCODER_SCALING * encoder_count / (now - timestamp);
+      Input_speed = wheel_rpm;
       encoder_count = 0;
       timestamp = now;
       //    dist[0] = 4.5 + dist[0] * (0.98); //scaling equation
@@ -112,13 +117,18 @@ void loop() {
       //    Setpoint_theta = constrain(0.5*(Input_dist - Setpoint_dist), -45, 45);
 
       // Run the PID loops
-//      xbeeStream.write(String(String(dist[0], 1) + ',' + String(dist[1], 1) + ',' + String(Input_theta, 1) + ',' + String(Input_dist, 1)));
+      //      xbeeStream.write(String(String(dist[0], 1) + ',' + String(dist[1], 1) + ',' + String(Input_theta, 1) + ',' + String(Input_dist, 1)));
       PID_theta.Compute();
       PID_dist.Compute();
+      PID_speed.Compute();
 
-      motorServo.write(90  - 20 );
-      steeringServo.write(90 + (Output_theta) - Output_dist); // + Output_theta - Output_dist
-    } // (50/abs(Input_dist - Setpoint_dist)) *
+      motorServo.write(90  - Output_speed );
+      if (abs(Output_dist - Setpoint_dist) < 10 && abs(Output_theta - Setpoint_theta) < 5) {
+        steeringServo.write(90 - Output_theta);
+      } else {
+        steeringServo.write(90 + (Output_theta) - Output_dist); // + Output_theta - Output_dist
+      } // (50/abs(Input_dist - Setpoint_dist)) *
+    }
   }
   delay(2);
 }
