@@ -1,10 +1,12 @@
+// IR works with servo to detect if there is an object in front of the crawler
 #include <Servo.h>
 
 // records of the distance between sensor and the object
 float sensorValue, cm, x, y;
 
-Servo myservo;  // create servo object to control a servo
-// twelve servo objects can be created on most boards
+Servo myservo;  // create servo object to control a servo that works with IRSensor
+
+Servo esc; // control the speed of the car
 
 int pos = 0;    // variable to store the servo position
 
@@ -14,6 +16,7 @@ void setup() {
   pinMode(A1, INPUT);
 
   myservo.write(0);
+  esc.write(0);
 }
 
 void loop() {
@@ -27,6 +30,7 @@ void loop() {
       Serial.println("Out of range.");
     else {
       calculatePosition(cm);    
+      esc.write(90);
       delay(15);                       // waits 15ms for the servo to reach the position
     }
     
@@ -40,6 +44,7 @@ void loop() {
       Serial.println("Out of range.");
     else {
       calculatePosition(cm);
+      esc.write(90);
       delay(15);                       // waits 15ms for the servo to reach the position
     }    
   }
@@ -50,8 +55,14 @@ void calculatePosition(float f) {
     y = sin(cm) * cm;
     x = cos(cm) * cm;
 
-    if(y < 20)
+   // If IR detects the object in front of the crawler, then slowly stop the crawler
+    if(y < 20) {
       Serial.println("Danger!");
+      for(int i = 0; i<90; i++) {
+        esc.write(i);
+        }
+      }
+      
     else {
       Serial.print("Position: cm: ");
       Serial.print(cm);
