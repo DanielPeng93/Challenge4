@@ -5,7 +5,8 @@
 #include <math.h>
 #include <PID_v1.h>
 #include <Servo.h>
-#include <Xbee.h>
+#include <XBee.h>
+#include <QueueArray.h>
 #include "XbeeApiStream.h"
 
 #define LIDARLITE_ADDR 0x62
@@ -93,13 +94,16 @@ void setup() {
 }
 
 void loop() {
-  if(xbeeStream.available() && xbeeStream.read() == 0x00)  state_paused = !state_paused;
+  if(xbeeStream.available() && xbeeStream.read() == 0x00){
+    state_paused = !state_paused;
+    if(state_paused)  motorServo.write(90);
+  }
   if (!state_paused) {
     now = millis();
     read_lidars();
     if (now - timestamp > 40) {
       wheel_rpm = ENCODER_SCALING * encoder_count / (now - timestamp);
-      encoder_pin = 0;
+      encoder_count = 0;
       timestamp = now;
       //    dist[0] = 4.5 + dist[0] * (0.98); //scaling equation
       Input_theta = calcAngle(dist[0], dist[1]);
@@ -108,7 +112,7 @@ void loop() {
       //    Setpoint_theta = constrain(0.5*(Input_dist - Setpoint_dist), -45, 45);
 
       // Run the PID loops
-      xbeeStream.write(String(String(dist[0], 1) + ',' + String(dist[1], 1) + ',' + String(Input_theta, 1) + ',' + String(Input_dist, 1)));
+//      xbeeStream.write(String(String(dist[0], 1) + ',' + String(dist[1], 1) + ',' + String(Input_theta, 1) + ',' + String(Input_dist, 1)));
       PID_theta.Compute();
       PID_dist.Compute();
 
