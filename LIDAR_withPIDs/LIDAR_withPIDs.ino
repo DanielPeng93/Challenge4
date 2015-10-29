@@ -49,7 +49,7 @@ const float pi = 3.142;
 const int encoder_pin = 2;
 volatile int encoder_count = 0;
 double wheel_rpm;
-#define ENCODER_SCALING 1
+#define ENCODER_SCALING 833.33 // Convert from pulses/ms to rpm 60000/72
 
 XbeeApiStream xbeeStream = XbeeApiStream();
 bool state_paused = true;
@@ -100,7 +100,12 @@ void setup() {
 void loop() {
   if (xbeeStream.available() && xbeeStream.read() == 0x00) {
     state_paused = !state_paused;
-    if (state_paused)  motorServo.write(90);
+    if(state_paused){
+      for(int i=70; i<=90; i++){
+        motorServo.write(i);
+        delay(10);
+      }
+    }
   }
   if (!state_paused) {
     now = millis();
