@@ -1,3 +1,4 @@
+
 // Two LIDARs on one side
 
 #include <Wire.h>
@@ -29,14 +30,14 @@ Servo steeringServo, motorServo;
 const int steeringPin = 9, motorPin = 8;
 
 //define PID variables
-double Setpoint_theta = 0, Input_theta, Output_theta, Setpoint_dist = 90, Input_dist, Output_dist, Setpoint_speed = 60, Input_speed, Output_speed;
+double Setpoint_theta = 0, Input_theta, Output_theta, Setpoint_dist = 90, Input_dist, Output_dist, Setpoint_speed = 240, Input_speed, Output_speed;
 //specify initial PID links and tuning
-int KpT = 1.7, KiT = 0, KdT = 0.01;  // {1.7, 0, 0.01}
-int KpD = 1.1, KiD = 0.075, KdD = 0.97;   // {1, 0, 0}
-//int KpS = 0.5, KiS = 0, KdS = 0;
+int KpT = 1.3, KiT = 0, KdT = 0.01;  // {1.7, 0, 0.01}
+int KpD = 1.2, KiD = 0.075, KdD = 0.97;   // {1, 0, 0}
+int KpS = 40, KiS = 0, KdS = 0;
 PID PID_theta(&Input_theta, &Output_theta, &Setpoint_theta, KpT, KiT, KdT, DIRECT);
 PID PID_dist(&Input_dist, &Output_dist, &Setpoint_dist, KpD, KiD, KdD, DIRECT);
-//PID PID_speed(&Input_speed, &Output_speed, &Setpoint_speed, KpS, KiS, KdS, DIRECT);
+PID PID_speed(&Input_speed, &Output_speed, &Setpoint_speed, KpS, KiS, KdS, DIRECT);
 
 //Spacing between LIDARs on vehicle
 double LIDARspacing = 22.5;
@@ -45,10 +46,10 @@ double LIDARspacing = 22.5;
 const float pi = 3.142;
 
 // Wheel encoder pulse counter variable
-//const int encoder_pin = 2;
-//volatile int encoder_count = 0;
-//double wheel_rpm;
-//#define ENCODER_SCALING 833.33 // Convert from pulses/ms to rpm 60000/72
+const int encoder_pin = 2;
+volatile int encoder_count = 0;
+double wheel_rpm;
+#define ENCODER_SCALING 833.33 // Convert from pulses/ms to rpm 60000/72
 
 XbeeApiStream xbeeStream = XbeeApiStream();
 bool state_paused = true;
@@ -58,12 +59,12 @@ bool state_paused = true;
 void setup() {
   PID_theta.SetMode(AUTOMATIC);
   PID_dist.SetMode(AUTOMATIC);
-//  PID_speed.SetMode(AUTOMATIC);
+  PID_speed.SetMode(AUTOMATIC);
 
   // Servo range limits
   PID_theta.SetOutputLimits(-45, 45);
   PID_dist.SetOutputLimits(-45, 45);
-//  PID_speed.SetOutputLimits(-20, 20);
+  PID_speed.SetOutputLimits(-60, 60);
 
   steeringServo.attach(steeringPin);
   motorServo.attach(motorPin);
@@ -77,9 +78,9 @@ void setup() {
   delay(100);
 
   // Set encoder pin as input and enable internal pull-up resistor
-//  pinMode(encoder_pin, INPUT);
+  pinMode(encoder_pin, INPUT);
 //  digitalWrite(encoder_pin, HIGH);
-//  attachInterrupt(digitalPinToInterrupt(encoder_pin), encoder_ISR, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(encoder_pin), encoder_ISR, CHANGE);
 
   // Set up the lidar pins and change the lidar acquisition count register value
   for (int i = 0; i < 2; i++)   pinMode(lidar_pwr_en[i], OUTPUT);
@@ -105,9 +106,9 @@ void loop() {
     now = millis();
     read_lidars();
     if (now - timestamp > 40) {
-//      wheel_rpm = ENCODER_SCALING * encoder_count / (now - timestamp);
-//      Input_speed = wheel_rpm;
-//      encoder_count = 0;
+      wheel_rpm = ENCODER_SCALING * encoder_count / (now - timestamp);
+      Input_speed = wheel_rpm;
+      encoder_count = 0;
       timestamp = now;
       //    dist[0] = 4.5 + dist[0] * (0.98); //scaling equation
       Input_theta = calcAngle(dist[0], dist[1]);
@@ -119,13 +120,13 @@ void loop() {
       //      xbeeStream.write(String(String(dist[0], 1) + ',' + String(dist[1], 1) + ',' + String(Input_theta, 1) + ',' + String(Input_dist, 1)));
       PID_theta.Compute();
       PID_dist.Compute();
-//      PID_speed.Compute();
+      PID_speed.Compute();
 
-      motorServo.write(90  - 30);
+      motorServo.write(90 - Output_speed);
       //      if (abs(Output_dist - Setpoint_dist) < 10 && abs(Output_theta - Setpoint_theta) < 5) {
       //        steeringServo.write(90 - Output_theta);
       //      } else {
-      steeringServo.write(90 + Output_theta - Output_dist); // + Output_theta - Output_dist
+      steeringServo.write(90 + (Output_theta) - Output_dist); // + Output_theta - Output_dist
       //      } // (50/abs(Input_dist - Setpoint_dist)) *
     }
   }
@@ -143,9 +144,9 @@ double calcPerpDist(double dist0, double dist1, double angle) {
   return ((dist0 + dist1) * cos(angle)) / 2;
 }
 
-//void encoder_ISR() {
-//  encoder_count++;
-//}
+void encoder_ISR() {
+  encoder_count++;
+}
 
 
 void read_lidars() {
