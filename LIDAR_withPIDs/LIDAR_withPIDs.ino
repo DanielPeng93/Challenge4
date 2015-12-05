@@ -6,6 +6,7 @@
 #include <Servo.h>
 #include <XBee.h>
 #include <QueueArray.h>
+#include <SoftwareSerial.h>
 
 
 #define LIDARLITE_ADDR 0x62
@@ -46,8 +47,8 @@ const int steeringPin = 9, motorPin = 8;
 //define PID variables
 double Setpoint_theta = 0, Input_theta, Output_theta, Setpoint_dist = 90, Input_dist, Output_dist, Setpoint_speed = 60, Input_speed, Output_speed;
 //specify initial PID links and tuning
-int KpT = 1.7, KiT = 0, KdT = 0.01;  // {1.7, 0, 0.01}
-int KpD = 1.1, KiD = 0.075, KdD = 0.97;   // {1, 0, 0}
+int KpT = 1.3, KiT = 0, KdT = 0.01;  // {1.7, 0, 0.01}
+int KpD = 1.2, KiD = 0.075, KdD = 0.97;   // {1, 0, 0}
 //int KpS = 0.5, KiS = 0, KdS = 0;
 PID PID_theta(&Input_theta, &Output_theta, &Setpoint_theta, KpT, KiT, KdT, DIRECT);
 PID PID_dist(&Input_dist, &Output_dist, &Setpoint_dist, KpD, KiD, KdD, DIRECT);
@@ -65,7 +66,7 @@ const float pi = 3.142;
 //double wheel_rpm;
 //#define ENCODER_SCALING 833.33 // Convert from pulses/ms to rpm 60000/72
 
-bool state_paused = true;
+bool state_paused = false;
 
 XBee xbee = XBee();
 SoftwareSerial xbeeSerial(2, 3);
@@ -84,13 +85,15 @@ void setup() {
   PID_dist.SetOutputLimits(-45, 45);
 //  PID_speed.SetOutputLimits(-20, 20);
 
-  steeringServo.attach(steeringPin);
-  motorServo.attach(motorPin);
+  steeringServo.attach(9); // initialize wheel servo to Digital IO Pin #8
+  motorServo.attach(8); // initialize motorServo to Digital IO Pin #9
+  steeringServo.write(pos);
+  motorServo.write(speed);
 
-  // Begin serial
-  Serial.begin(9600);
-  xbeeStream.begin(Serial);
-  xbeeStream.write("Serial begin");
+  Serial.begin(57600);
+  xbeeSerial.begin(57600);
+  xbee.begin(xbeeSerial);
+  delay(2000);
   // Open and join irc bus as master
   Wire.begin();
   delay(100);
@@ -116,14 +119,21 @@ void setup() {
 }
 
 void loop() {
-  if (xbeeStream.available() && xbeeStream.read() == 0x00) {
-    state_paused = !state_paused;
-    if (state_paused)  motorServo.write(90);
-  }
+  // if (xbeeStream.available() && xbeeStream.read() == 0x00) {
+  //   state_paused = !state_paused;
+  //   if (state_paused)  motorServo.write(90);
+  // }
   if (!state_paused) {
     now = millis();
     read_lidars();
+    readAndHandlePackets();
     if (now - timestamp > 40) {
+      if (trigger[count]) {
+        Serial.println("Turn!");
+        left_forward();
+        timeStamp = millis();
+        count++;
+      }
 //      wheel_rpm = ENCODER_SCALING * encoder_count / (now - timestamp);
 //      Input_speed = wheel_rpm;
 //      encoder_count = 0;
@@ -153,6 +163,18 @@ void loop() {
 
 
 //---------------------------------------------------------//
+void left_forward(void) {
+  steeringServo.write(150);
+  motorServo.write(60);
+  delay(forwardTime);
+}
+
+void pause_vehicle(void) {
+  motorServo.detach();
+  delay(pauseTime);
+  motorServo.attach(9);
+  motorServo.write(90);
+}
 
 double calcAngle(double dist0, double dist1) {
   return  atan((dist0 - dist1) / LIDARspacing);
@@ -208,3 +230,36 @@ void read_lidars() {
   }
 }
 
+void readAndHandlePackets(void) {
+  if (xbee.readPacket(1) && xbee.getResponse().getApiId() == ZB_RX_RESPONSE) {
+    xbee.getResponse().getZBRxResponse(rxResponse);
+    Serial.print("Got a packet!");
+    switch (rxResponse.getData(0)) {
+      case MSG_TRIP1:
+        if (trigger [0], !trigger[1], !trigger[2], !trigger[3], !trigger[4]) {
+          trigger[1] = true;
+          Serial.println("TRIP1");
+        } 
+        break;
+      case MSG_TRIP2:
+        if (trigger [0], trigger[1], !trigger[2], !trigger[3], !trigger[4]) {
+          trigger[2] = true;
+          Serial.println("TRIP2");
+        }
+        break;
+      case MSG_TRIP3:
+        if (trigger [0], trigger[1], trigger[2], !trigger[3], !trigger[4]) {
+          trigger[3] = true;
+          Serial.println("TRIP3");
+        }
+        break;
+      case MSG_TRIP4:
+        if (trigger [0], trigger[1], trigger[2], trigger[3], !trigger[4]) {
+          trigger[4] = true;
+          Serial.println("TRIP4");
+          complete = true;
+        }
+        break;
+    }
+  }
+}
